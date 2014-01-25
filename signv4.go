@@ -50,8 +50,25 @@ func CanonicalRequest(r *http.Request) (string, error) {
 
 // CanonicalURI return request uri
 func CanonicalURI(r *http.Request) string {
-	uri := strings.Split(r.URL.RequestURI(), "?")
-	return fmt.Sprintf("%s\n", uri[0])
+	pattens := strings.Split(r.URL.Path, "/")
+	var uri []string
+	for _, v := range pattens {
+		switch v {
+		case "":
+			continue
+		case ".":
+			continue
+		case "..":
+			if len(uri) > 0 {
+				uri = uri[:len(uri)-1]
+			}
+		default:
+			uri = append(uri, url.QueryEscape(v))
+		}
+	}
+	urlpath := "/" + strings.Join(uri, "/")
+	r.URL.Path = strings.Replace(urlpath, "+", "%20", -1)
+	return fmt.Sprintf("%s", r.URL.Path)
 }
 
 // CanonicalQueryString
@@ -67,11 +84,10 @@ func CanonicalQueryString(r *http.Request) string {
 				kv = fmt.Sprintf("%s=%s", k, url.QueryEscape(v))
 			}
 			a = append(a, strings.Replace(kv, "+", "%20", -1))
-
 		}
 	}
 	sort.Strings(a)
-	return fmt.Sprintf("%s\n", strings.Join(a, "&"))
+	return fmt.Sprintf("%s", strings.Join(a, "&"))
 }
 
 // CanonicalHeaders
@@ -85,6 +101,7 @@ func CanonicalHeaders(r *http.Request) string {
 		}
 		a = append(a, strings.ToLower(key)+":"+strings.Join(q, ","))
 	}
+	a = append(a, "host:"+r.Host)
 	sort.Strings(a)
 	return fmt.Sprintf("%s\n", strings.Join(a, "\n"))
 }
@@ -95,12 +112,16 @@ func SignedHeaders(r *http.Request) string {
 	for key := range r.Header {
 		a = append(a, strings.ToLower(key))
 	}
+	a = append(a, "host")
 	sort.Strings(a)
-	return fmt.Sprintf("%s\n", strings.Join(a, ";"))
+	return fmt.Sprintf("%s", strings.Join(a, ";"))
 }
 
 // RequestPayload
 func RequestPayload(r *http.Request) ([]byte, error) {
+	if r.Body == nil {
+		return []byte(""), nil
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 	return b, err
