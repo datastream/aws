@@ -30,7 +30,7 @@ func GetSignature(r *http.Request) (*Signature, string, error) {
 		return nil, "", errors.New("wrong authorization header")
 	}
 	for k := range r.Header {
-		if signedHeaders[k] != true {
+		if signedHeaders[strings.ToLower(k)] != true {
 			r.Header.Del(k)
 		}
 	}
