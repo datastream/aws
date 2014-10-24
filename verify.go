@@ -12,22 +12,22 @@ import (
 func GetSignature(r *http.Request) (*Signature, string, error) {
 	authHeader := r.Header.Get("Authorization")
 	if len(authHeader) < 16 {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("get authorization header failed")
 	}
 	if authHeader[:16] != "AWS4-HMAC-SHA256" {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("get aws4-hmac-sha256 failed")
 	}
 	pattens := strings.Split(authHeader, " ")
 	if len(pattens) != 4 {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("wrong authorization header size")
 	}
 	signature, err := getCredential(pattens[1][:len(pattens[1])-1])
 	if err != nil {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("get authorization header signature failed")
 	}
 	signedHeaders, err := getSignedHeaders(pattens[2][:len(pattens[2])-1])
 	if err != nil {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("get authorization header signedHeaders failed")
 	}
 	for k := range r.Header {
 		if signedHeaders[strings.ToLower(k)] != true {
@@ -35,7 +35,7 @@ func GetSignature(r *http.Request) (*Signature, string, error) {
 		}
 	}
 	if pattens[3][:9] != "Signature" {
-		return nil, "", errors.New("wrong authorization header")
+		return nil, "", errors.New("no signature")
 	}
 	return signature, authHeader, nil
 }
