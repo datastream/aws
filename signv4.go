@@ -45,7 +45,7 @@ func CanonicalRequest(r *http.Request, signedHeaders map[string]bool) (string, e
 		return "", err
 	}
 	hexencode, err := HexEncodeSHA256Hash(data)
-	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", r.Method, CanonicalURI(r), CanonicalQueryString(r), CanonicalHeaders(r), SignedHeaders(r, signedHeaders), hexencode), err
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", r.Method, CanonicalURI(r), CanonicalQueryString(r), CanonicalHeaders(r, signedHeaders), SignedHeaders(r, signedHeaders), hexencode), err
 }
 
 // CanonicalURI return request uri
@@ -90,17 +90,22 @@ func CanonicalQueryString(r *http.Request) string {
 }
 
 // CanonicalHeaders
-func CanonicalHeaders(r *http.Request) string {
+func CanonicalHeaders(r *http.Request, signedHeaders map[string]bool) string {
 	var a []string
 	for key, value := range r.Header {
-		sort.Strings(value)
-		var q []string
-		for _, v := range value {
-			q = append(q, trimString(v))
+		if len(signedHeaders) == 0 || signedHeaders[strings.ToLower(key)] {
+
+			sort.Strings(value)
+			var q []string
+			for _, v := range value {
+				q = append(q, trimString(v))
+			}
+			a = append(a, strings.ToLower(key)+":"+strings.Join(q, ","))
 		}
-		a = append(a, strings.ToLower(key)+":"+strings.Join(q, ","))
 	}
-	a = append(a, "host:"+r.Host)
+	if r.Header.Get("host") == "" || !signedHeaders["host"] {
+		a = append(a, "host:"+r.Host)
+	}
 	sort.Strings(a)
 	return fmt.Sprintf("%s\n", strings.Join(a, "\n"))
 }

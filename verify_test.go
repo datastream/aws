@@ -28,8 +28,6 @@ func TestVerify(t *testing.T) {
 	if aa != authheader {
 		t.Fatal("wrong authorization header", aa)
 	}
-	r.Header.Del("x-data")
-	r.Header.Del("authorization")
 	s.SignRequest(r, ah)
 	ss, aa, ah, err = sign4.GetSignature(r)
 	t.Log(r)
