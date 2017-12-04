@@ -9,35 +9,31 @@ import (
 )
 
 // Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
-func GetSignature(r *http.Request) (*Signature, string, error) {
+func GetSignature(r *http.Request) (*Signature, string, map[string]bool, error) {
+	signedHeaders := make(map[string]bool)
 	authHeader := r.Header.Get("Authorization")
 	if len(authHeader) < 16 {
-		return nil, "", errors.New("get authorization header failed")
+		return nil, "", signedHeaders, errors.New("get authorization header failed")
 	}
 	if authHeader[:16] != "AWS4-HMAC-SHA256" {
-		return nil, "", errors.New("get aws4-hmac-sha256 failed")
+		return nil, "", signedHeaders, errors.New("get aws4-hmac-sha256 failed")
 	}
 	pattens := strings.Split(authHeader, " ")
 	if len(pattens) != 4 {
-		return nil, "", errors.New("wrong authorization header size")
+		return nil, "", signedHeaders, errors.New("wrong authorization header size")
 	}
 	signature, err := getCredential(pattens[1][:len(pattens[1])-1])
 	if err != nil {
-		return nil, "", errors.New("get authorization header signature failed")
+		return nil, "", signedHeaders, errors.New("get authorization header signature failed")
 	}
-	signedHeaders, err := getSignedHeaders(pattens[2][:len(pattens[2])-1])
+	signedHeaders, err = getSignedHeaders(pattens[2][:len(pattens[2])-1])
 	if err != nil {
-		return nil, "", errors.New("get authorization header signedHeaders failed")
-	}
-	for k := range r.Header {
-		if signedHeaders[strings.ToLower(k)] != true {
-			r.Header.Del(k)
-		}
+		return nil, "", signedHeaders, errors.New("get authorization header signedHeaders failed")
 	}
 	if pattens[3][:9] != "Signature" {
-		return nil, "", errors.New("no signature")
+		return nil, "", signedHeaders, errors.New("no signature")
 	}
-	return signature, authHeader, nil
+	return signature, authHeader, signedHeaders, nil
 }
 
 func getCredential(s string) (*Signature, error) {

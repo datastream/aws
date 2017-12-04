@@ -39,13 +39,13 @@ func hmacsha256(key []byte, data string) ([]byte, error) {
 //  CanonicalHeaders + '\n' +
 //  SignedHeaders + '\n' +
 //  HexEncode(Hash(RequestPayload))
-func CanonicalRequest(r *http.Request) (string, error) {
+func CanonicalRequest(r *http.Request, signedHeaders map[string]bool) (string, error) {
 	data, err := RequestPayload(r)
 	if err != nil {
 		return "", err
 	}
 	hexencode, err := HexEncodeSHA256Hash(data)
-	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", r.Method, CanonicalURI(r), CanonicalQueryString(r), CanonicalHeaders(r), SignedHeaders(r), hexencode), err
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", r.Method, CanonicalURI(r), CanonicalQueryString(r), CanonicalHeaders(r), SignedHeaders(r, signedHeaders), hexencode), err
 }
 
 // CanonicalURI return request uri
@@ -67,8 +67,7 @@ func CanonicalURI(r *http.Request) string {
 		}
 	}
 	urlpath := "/" + strings.Join(uri, "/")
-	r.URL.Path = strings.Replace(urlpath, "+", "%20", -1)
-	return fmt.Sprintf("%s", r.URL.Path)
+	return fmt.Sprintf("%s", strings.Replace(urlpath, "+", "%20", -1))
 }
 
 // CanonicalQueryString
@@ -107,12 +106,16 @@ func CanonicalHeaders(r *http.Request) string {
 }
 
 // SignedHeaders
-func SignedHeaders(r *http.Request) string {
+func SignedHeaders(r *http.Request, signedHeaders map[string]bool) string {
 	var a []string
 	for key := range r.Header {
-		a = append(a, strings.ToLower(key))
+		if len(signedHeaders) == 0 || signedHeaders[strings.ToLower(key)] {
+			a = append(a, strings.ToLower(key))
+		}
 	}
-	a = append(a, "host")
+	if r.Header.Get("host") == "" || !signedHeaders["host"] {
+		a = append(a, "host")
+	}
 	sort.Strings(a)
 	return fmt.Sprintf("%s", strings.Join(a, ";"))
 }
@@ -204,7 +207,7 @@ type Signature struct {
 }
 
 // SignRequest set Authorization header
-func (s *Signature) SignRequest(r *http.Request) error {
+func (s *Signature) SignRequest(r *http.Request, signedHeaders map[string]bool) error {
 	var t time.Time
 	var err error
 	var dt string
@@ -218,7 +221,7 @@ func (s *Signature) SignRequest(r *http.Request) error {
 		t = time.Now()
 		r.Header.Set("x-amz-date", t.UTC().Format(BasicDateFormat))
 	}
-	canonicalRequest, err := CanonicalRequest(r)
+	canonicalRequest, err := CanonicalRequest(r, signedHeaders)
 	if err != nil {
 		return err
 	}
@@ -232,8 +235,8 @@ func (s *Signature) SignRequest(r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	signedHeaders := SignedHeaders(r)
-	authValue := AuthHeaderValue(signature, s.AccessKey, credentialScope, signedHeaders)
+	signedHeadersstring := SignedHeaders(r, signedHeaders)
+	authValue := AuthHeaderValue(signature, s.AccessKey, credentialScope, signedHeadersstring)
 	r.Header.Set("Authorization", authValue)
 	return nil
 }

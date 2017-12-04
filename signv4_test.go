@@ -44,7 +44,7 @@ func TestCredentailScope(t *testing.T) {
 func TestCanonicalRequest(t *testing.T) {
 	r, _ := http.NewRequest("GET", "http://host.foo.com/%20/foo", nil)
 	r.Header.Add("date", "Mon, 09 Sep 2011 23:36:00 GMT")
-	v, _ := sign4.CanonicalRequest(r)
+	v, _ := sign4.CanonicalRequest(r, make(map[string]bool))
 	if v != `GET
 /%20/foo
 
@@ -66,7 +66,7 @@ func TestStringToSign(t *testing.T) {
 	}
 	r, _ := http.NewRequest("GET", "http://host.foo.com/%20/foo", nil)
 	r.Header.Add("date", "Mon, 09 Sep 2011 23:36:00 GMT")
-	canonicalRequest, _ := sign4.CanonicalRequest(r)
+	canonicalRequest, _ := sign4.CanonicalRequest(r, make(map[string]bool))
 	tt, _ := time.Parse(time.RFC1123, "Mon, 09 Sep 2011 23:36:00 GMT")
 	credentialScope := sign4.CredentialScope(tt, s.Region, s.Service)
 	stringToSign := sign4.StringToSign(canonicalRequest, credentialScope, tt)
@@ -87,7 +87,7 @@ func TestAuthHeader(t *testing.T) {
 	}
 	r, _ := http.NewRequest("GET", "http://host.foo.com/%20/foo", nil)
 	r.Header.Add("date", "Mon, 09 Sep 2011 23:36:00 GMT")
-	s.SignRequest(r)
+	s.SignRequest(r, make(map[string]bool))
 	if r.Header.Get("authorization") != `AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=date;host, Signature=f309cfbd10197a230c42dd17dbf5cca8a0722564cb40a872d25623cfa758e374` {
 		t.Fatal(r.Header.Get("authorization"), "miss match")
 	}
@@ -103,7 +103,7 @@ func TestPostHeader(t *testing.T) {
 	r, _ := http.NewRequest("POST", "http://host.foo.com/", ioutil.NopCloser(bytes.NewBuffer([]byte("foo=bar"))))
 	r.Header.Add("date", "Mon, 09 Sep 2011 23:36:00 GMT")
 	r.Header.Add("content-type", "application/x-www-form-urlencoded; charset=utf8")
-	s.SignRequest(r)
+	s.SignRequest(r, make(map[string]bool))
 	if r.Header.Get("authorization") != `AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=b105eb10c6d318d2294de9d49dd8b031b55e3c3fe139f2e637da70511e9e7b71` {
 		t.Fatal(r.Header.Get("authorization"), "miss match")
 	}
