@@ -245,3 +245,22 @@ func (s *Signature) SignRequest(r *http.Request, signedHeaders map[string]bool) 
 	r.Header.Set("Authorization", authValue)
 	return nil
 }
+
+func (s *Signature) GetStringToSign(r *http.Request, signedHeaders map[string]bool) (*string, error) {
+	var t time.Time
+	var err error
+	var dt string
+	if dt = r.Header.Get("x-amz-date"); dt != "" {
+		t, err = time.Parse(BasicDateFormat, dt)
+	}
+	if err != nil || dt == "" {
+		return nil, fmt.Errorf("fail to get date")
+	}
+	canonicalRequest, err := CanonicalRequest(r, signedHeaders)
+	if err != nil {
+		return nil, err
+	}
+	credentialScope := CredentialScope(t, s.Region, s.Service)
+	stringToSign := StringToSign(canonicalRequest, credentialScope, t)
+	return &stringToSign, nil
+}
