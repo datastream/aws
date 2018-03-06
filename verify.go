@@ -10,8 +10,12 @@ import (
 
 // Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
 func GetSignature(r *http.Request) (*Signature, string, map[string]bool, error) {
-	signedHeaders := make(map[string]bool)
 	authHeader := r.Header.Get("Authorization")
+	return GetSignatureFromString(authHeader)
+}
+
+func GetSignatureFromString(authHeader string) (*Signature, string, map[string]bool, error) {
+	signedHeaders := make(map[string]bool)
 	if len(authHeader) < 16 {
 		return nil, "", signedHeaders, errors.New("get authorization header failed")
 	}
@@ -35,7 +39,6 @@ func GetSignature(r *http.Request) (*Signature, string, map[string]bool, error) 
 	}
 	return signature, authHeader, signedHeaders, nil
 }
-
 func GetCredentialFromString(authHeader string) (*Signature, error) {
 	if len(authHeader) < 16 {
 		return nil, errors.New("bad authorization header")
