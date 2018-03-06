@@ -50,7 +50,30 @@ func GetCredentialFromString(authHeader string) (*Signature, error) {
 	return getCredential(pattens[1][:len(pattens[1])-1])
 }
 
+func GetSignedHeadersFromString(authHeader string) (string, error) {
+	if len(authHeader) < 16 {
+		return "", errors.New("bad authorization header")
+	}
+	if authHeader[:16] != "AWS4-HMAC-SHA256" {
+		return "", errors.New("not aws4-hmac-sha256")
+	}
+	pattens := strings.Split(authHeader, " ")
+	if len(pattens) != 4 {
+		return "", errors.New("wrong authorization header size")
+	}
+	if len(pattens[1]) < 14 {
+		return "", errors.New("wrong signedheaders part")
+	}
+	if pattens[1][:14] != "SignedHeaders=" {
+		return "", errors.New("wrong signedheaders part")
+	}
+
+	return pattens[1][14:], nil
+}
 func getCredential(s string) (*Signature, error) {
+	if len(s) < 11 {
+		return nil, errors.New("wrong credential part")
+	}
 	if s[:11] != "Credential=" {
 		return nil, errors.New("wrong credential part")
 	}
@@ -70,7 +93,6 @@ func getCredential(s string) (*Signature, error) {
 }
 
 func getSignedHeaders(s string) (map[string]bool, error) {
-	headers := strings.Split(s[14:], ";")
 	h := make(map[string]bool)
 	if len(s) < 14 {
 		return h, errors.New("wrong signedheaders part")
@@ -78,6 +100,7 @@ func getSignedHeaders(s string) (map[string]bool, error) {
 	if s[:14] != "SignedHeaders=" {
 		return h, errors.New("wrong signedheaders part")
 	}
+	headers := strings.Split(s[14:], ";")
 	for _, v := range headers {
 		h[v] = true
 	}
