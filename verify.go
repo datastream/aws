@@ -36,6 +36,20 @@ func GetSignature(r *http.Request) (*Signature, string, map[string]bool, error) 
 	return signature, authHeader, signedHeaders, nil
 }
 
+func GetCredentialFromString(authHeader string) (*Signature, error) {
+	if len(authHeader) < 16 {
+		return nil, errors.New("bad authorization header")
+	}
+	if authHeader[:16] != "AWS4-HMAC-SHA256" {
+		return nil, errors.New("not aws4-hmac-sha256")
+	}
+	pattens := strings.Split(authHeader, " ")
+	if len(pattens) != 4 {
+		return nil, errors.New("wrong authorization header size")
+	}
+	return getCredential(pattens[1][:len(pattens[1])-1])
+}
+
 func getCredential(s string) (*Signature, error) {
 	if s[:11] != "Credential=" {
 		return nil, errors.New("wrong credential part")
