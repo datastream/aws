@@ -50,24 +50,7 @@ func CanonicalRequest(r *http.Request, signedHeaders map[string]bool) (string, e
 
 // CanonicalURI return request uri
 func CanonicalURI(r *http.Request) string {
-	pattens := strings.Split(r.URL.Path, "/")
-	var uri []string
-	for _, v := range pattens {
-		switch v {
-		case "":
-			continue
-		case ".":
-			continue
-		case "..":
-			if len(uri) > 0 {
-				uri = uri[:len(uri)-1]
-			}
-		default:
-			uri = append(uri, url.QueryEscape(v))
-		}
-	}
-	urlpath := "/" + strings.Join(uri, "/")
-	return fmt.Sprintf("%s", strings.Replace(urlpath, "+", "%20", -1))
+	return r.URL.EscapedPath()
 }
 
 // CanonicalQueryString
