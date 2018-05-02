@@ -235,6 +235,8 @@ func (s *Signature) GetStringToSign(r *http.Request, signedHeaders map[string]bo
 	var dt string
 	if dt = r.Header.Get("x-amz-date"); dt != "" {
 		t, err = time.Parse(BasicDateFormat, dt)
+	} else if dt = r.Header.Get("date"); dt != "" {
+		t, err = time.Parse(time.RFC1123, dt)
 	}
 	if err != nil || dt == "" {
 		return nil, fmt.Errorf("fail to get date")
