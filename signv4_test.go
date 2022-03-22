@@ -1,7 +1,7 @@
 package sign4_test
 
 import (
-	"../aws"
+	"github.com/datastream/aws"
 	"bytes"
 	"fmt"
 	"io/ioutil"
