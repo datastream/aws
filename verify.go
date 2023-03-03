@@ -9,7 +9,7 @@ import (
 )
 
 // Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=5a15b22cf462f047318703b92e6f4f38884e4a7ab7b1d6426ca46a8bd1c26cbc
-//Authorization: AWS4-HMAC-SHA256 Credential=devops/20180312/hz/dnsapi/aws4_request,SignedHeaders=Content-Length;Content-type;host;x-amz-date,Signature=8a31f6aaa5026579bb2cf20962768190fdd0b4846ed5c48842fa61936245e9c5
+// Authorization: AWS4-HMAC-SHA256 Credential=devops/20180312/hz/dnsapi/aws4_request,SignedHeaders=Content-Length;Content-type;host;x-amz-date,Signature=8a31f6aaa5026579bb2cf20962768190fdd0b4846ed5c48842fa61936245e9c5
 func GetSignature(r *http.Request) (*Signature, string, map[string]bool, error) {
 	authHeader := r.Header.Get("Authorization")
 	return GetSignatureFromString(authHeader)
@@ -51,19 +51,16 @@ func GetSignatureFromString(authHeader string) (*Signature, string, map[string]b
 	return signature, authHeader, signedHeaders, nil
 }
 func getCredential(s string) (*Signature, error) {
-	if len(s) < 11 {
-		return nil, errors.New("wrong credential part")
-	}
-	if s[:11] != "Credential=" {
+	// Check if the credential part has the correct length and format
+	if !strings.HasPrefix(s, "Credential=") {
 		return nil, errors.New("wrong credential part")
 	}
 	parts := strings.Split(s[11:], "/")
-	if len(parts) != 5 {
+	if len(parts) != 5 || parts[4] != "aws4_request" {
 		return nil, errors.New("wrong credential part")
 	}
-	if parts[4] != "aws4_request" {
-		return nil, errors.New("wrong credential part")
-	}
+
+	// Extract the access key, region, and service from the credential part
 	ss := &Signature{
 		AccessKey: parts[0],
 		Region:    parts[2],
@@ -71,18 +68,20 @@ func getCredential(s string) (*Signature, error) {
 	}
 	return ss, nil
 }
-
 func getSignedHeaders(s string) (map[string]bool, error) {
-	h := make(map[string]bool)
-	if len(s) < 14 {
-		return h, errors.New("wrong signedheaders part")
+	// Check if the signed headers part has the correct length and format
+	if !strings.HasPrefix(s, "SignedHeaders=") {
+		return nil, errors.New("wrong signedheaders part")
 	}
-	if s[:14] != "SignedHeaders=" {
-		return h, errors.New("wrong signedheaders part")
-	}
+
+	// Extract the signed headers from the input string
 	headers := strings.Split(s[14:], ";")
-	for _, v := range headers {
-		h[v] = true
+
+	// Create a map to store the signed headers
+	signedHeaders := make(map[string]bool)
+	for _, h := range headers {
+		signedHeaders[h] = true
 	}
-	return h, nil
+
+	return signedHeaders, nil
 }
